@@ -23,16 +23,4 @@ constructor(private userService: UsersService){}
         const user = this.userService.findOne(userDto.username);
         return user;
     }
-
-    @Post('create')
-    create(@Body()userModel:User) : Promise<any>{
-        const user = this.userService.insertUser(userModel);
-        return user;
-    }
-
-    @Post('login')
-    login(@Body()userModel:User) : Promise<any>{
-        const userToken = this.userService.loginUser(userModel);
-        return userToken;
-    }
 }

@@ -1,6 +1,10 @@
-export interface User {
+import { ApiProperty } from "@nestjs/swagger";
+export class User {
+    @ApiProperty()
     userId: string;
+    @ApiProperty()
     username: string;
+    @ApiProperty()
     password: string;
     refresh: string;
     isActive: boolean;

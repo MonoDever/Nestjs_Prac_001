@@ -1,4 +1,4 @@
-import { Injectable, UnauthorizedException } from '@nestjs/common';
+import { ConflictException, HttpStatus, Injectable, UnauthorizedException } from '@nestjs/common';
 import { AuthenEntity } from 'src/users/Entities/userEntity';
 import { User } from 'src/users/interfaces/user.interface';
 import { UsersService } from 'src/users/users.service';
@@ -10,8 +10,18 @@ const saltRounds = 10;
 export class AuthService {
     constructor(private userService: UsersService){}
 
+    async register(userDto: User): Promise<any>{
+        try{
+            const user = this.userService.insertUser(userDto);
+        }catch(err){
+             throw err;
+        }
+    }
     async signIn(userDto: User): Promise<any>{
         const user = await this.userService.findOne(userDto.username)
+        if (!user || user.userId == null){
+            throw new UnauthorizedException();
+        }
         const resultCompare = await this.comparePassword(userDto.password, user.password);
         if (!resultCompare){
             throw new UnauthorizedException();
@@ -48,5 +58,17 @@ export class AuthService {
 
         const isPasswordCorrect = await bcrypt.compare(password, existPassword);
         return isPasswordCorrect;
+    }
+    private setDateUTC = () => {
+        const today = new Date();
+        const year = today.getUTCFullYear();
+        const month = today.getUTCMonth() + 1;
+        const day = today.getUTCDate();
+        const hours = today.getUTCHours();
+        const minutes = today.getUTCMinutes();
+        const seconds = today.getUTCSeconds();
+        const milliSeconds = today.getUTCMilliseconds();
+        let dateUTC = Date.UTC(year, month, day, hours, minutes, seconds, milliSeconds)
+        return new Date(dateUTC);
     }
 }

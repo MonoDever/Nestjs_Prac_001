@@ -9,6 +9,11 @@ import { RefreshGuard } from './guard/refresh.quard';
 export class AuthController {
     constructor(private authService: AuthService) {}
 
+    @Post('register')
+    register(@Body() userDto: User): Promise<any>{
+        const user = this.authService.register(userDto);
+        return user;
+    }
     @HttpCode(HttpStatus.OK)
     @Post('login')
     signIn(@Body()signInDTO: User): Promise<any>{
@@ -21,7 +26,6 @@ export class AuthController {
         const user = req.user;
         return user;
     }
-
     @UseGuards(AuthGuard)
     @Get('profile')
     getProfile(@Request() req) {
