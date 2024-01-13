@@ -12,7 +12,7 @@ export class AuthService {
 
     async register(userDto: User): Promise<any>{
         try{
-            const user = this.userService.insertUser(userDto);
+            const user = await this.userService.insertUser(userDto);
         }catch(err){
              throw err;
         }

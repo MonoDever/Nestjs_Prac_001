@@ -1,4 +1,4 @@
-import { ConflictException, Injectable, UnauthorizedException } from '@nestjs/common';
+import { ConflictException, HttpException, HttpStatus, Injectable, UnauthorizedException } from '@nestjs/common';
 import { UserRepository } from './Repositories/userRepository.entity';
 import { Repository } from 'typeorm';
 import { InjectRepository } from '@nestjs/typeorm';
@@ -43,7 +43,8 @@ export class UsersService {
             /**
              * check user is already
              */
-            const userAlready =  await this.findOne(userDto.username)//แก้ async ตอน throw exception
+            // const userAlready =  await this.findOne(userDto.username)//แก้ async ตอน throw exception
+            const userAlready = await this.findOne(userDto.username);
             if (userAlready && userAlready.username !== null) {
                 throw new ConflictException('user is already');
             }
@@ -63,9 +64,9 @@ export class UsersService {
 
             const userRegistered = this.userRepository.save(newUser)
             const resultMapping = this.dataMapping(User, userRegistered);
-            return resultMapping;
+            return await resultMapping;
         } catch (err) {
-            throw err;
+           throw await new HttpException(err.message, HttpStatus.BAD_REQUEST)
         }
     }
     async updateUser(data: User) {
