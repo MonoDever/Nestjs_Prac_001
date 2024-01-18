@@ -11,8 +11,8 @@ export class AuthController {
 
     @Post('register')
     register(@Body() userDto: User): Promise<any>{
-        const user = this.authService.register(userDto);
-        return user;
+        const result = this.authService.register(userDto);
+        return result;
     }
     @HttpCode(HttpStatus.OK)
     @Post('login')

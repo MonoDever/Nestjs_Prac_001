@@ -4,8 +4,9 @@ import { Repository } from 'typeorm';
 import { InjectRepository } from '@nestjs/typeorm';
 import { User } from './interfaces/user.interface';
 import { UserEntity } from './Entities/userEntity';
+import { ResultEntity} from './Entities/resultEntity';
 import { deserialize, serialize } from 'v8';
-import { promises } from 'dns';
+
 const JWT = require('jsonwebtoken')
 const bcrypt = require('bcrypt');
 const saltRounds = 10;
@@ -38,7 +39,7 @@ export class UsersService {
         }
     }
 
-    async insertUser(userDto: User): Promise<UserEntity>{
+    async insertUser(userDto: User): Promise<ResultEntity>{
         try {
             /**
              * check user is already
@@ -55,16 +56,22 @@ export class UsersService {
             const hashPassword = bcrypt.hashSync(userDto.password, saltRounds);
             let date = this.setDateUTC();
             const newUser = new UserRepository();
-            newUser.userId = userDto.userId;//todo
+            newUser.userId = userDto.userId = 'test';//todo
             newUser.username = userDto.username;
             newUser.password = hashPassword;
             newUser.isActive = true;
             newUser.createdBy = "SYSTEM";
             newUser.createdDate = date;
 
-            const userRegistered = this.userRepository.save(newUser)
-            const resultMapping = this.dataMapping(User, userRegistered);
-            return await resultMapping;
+            // const userRegistered = this.userRepository.save(newUser)
+            const userRegistered = await this.userRepository
+            .query(`EXEC [oni].[SP_REGISTER_USER] @0, @1, @2, @3`,[userDto.username,`${hashPassword}`,1,date]);
+            // const resultMapping = this.dataMapping(User, userRegistered);
+            const resultEntity = new ResultEntity()
+            if(userRegistered){
+                resultEntity.result = 'SUCCESS'
+            }
+            return resultEntity;
         } catch (err) {
            throw await new HttpException(err.message, HttpStatus.BAD_REQUEST)
         }

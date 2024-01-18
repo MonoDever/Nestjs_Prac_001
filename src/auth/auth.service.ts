@@ -1,4 +1,5 @@
 import { ConflictException, HttpStatus, Injectable, UnauthorizedException } from '@nestjs/common';
+import { ResultEntity } from 'src/users/Entities/resultEntity';
 import { AuthenEntity } from 'src/users/Entities/userEntity';
 import { User } from 'src/users/interfaces/user.interface';
 import { UsersService } from 'src/users/users.service';
@@ -10,9 +11,10 @@ const saltRounds = 10;
 export class AuthService {
     constructor(private userService: UsersService){}
 
-    async register(userDto: User): Promise<any>{
+    async register(userDto: User): Promise<ResultEntity>{
         try{
-            const user = await this.userService.insertUser(userDto);
+            const result = await this.userService.insertUser(userDto);
+            return result;
         }catch(err){
              throw err;
         }
@@ -59,6 +61,7 @@ export class AuthService {
         const isPasswordCorrect = await bcrypt.compare(password, existPassword);
         return isPasswordCorrect;
     }
+
     private setDateUTC = () => {
         const today = new Date();
         const year = today.getUTCFullYear();
@@ -70,5 +73,10 @@ export class AuthService {
         const milliSeconds = today.getUTCMilliseconds();
         let dateUTC = Date.UTC(year, month, day, hours, minutes, seconds, milliSeconds)
         return new Date(dateUTC);
+    }
+    private getYear = async () =>{
+        const today = new Date()
+        const year = today.getUTCFullYear();
+        return year
     }
 }
