@@ -7,9 +7,10 @@ import { Connection } from 'typeorm';
 import connectOptions from '../ormconfig'
 import { ConfigModule } from '@nestjs/config';
 import { AuthModule } from './auth/auth.module';
+import { EmailModule } from './email/email.module';
 
 @Module({
-  imports: [TypeOrmModule.forRoot(connectOptions), UsersModule,ConfigModule.forRoot(), AuthModule],
+  imports: [TypeOrmModule.forRoot(connectOptions), UsersModule,ConfigModule.forRoot(), AuthModule, EmailModule],
   controllers: [AppController],
   providers: [AppService],
 })

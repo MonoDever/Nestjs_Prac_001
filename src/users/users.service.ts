@@ -5,6 +5,7 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { User } from './interfaces/user.interface';
 import { UserEntity } from './Entities/userEntity';
 import { ResultEntity} from './Entities/resultEntity';
+import { EmailService } from 'src/email/email.service';
 import { deserialize, serialize } from 'v8';
 
 const JWT = require('jsonwebtoken')
@@ -15,7 +16,10 @@ const saltRounds = 10;
 @Injectable()
 export class UsersService {
     constructor(@InjectRepository(UserRepository)
-    private readonly userRepository: Repository<UserRepository>) { }
+    private readonly userRepository: Repository<UserRepository>,
+    private emailService : EmailService
+    ) { }
+    
 
     async findAll(): Promise<UserEntity[]> {
         const result = await this.userRepository.find();
@@ -41,13 +45,16 @@ export class UsersService {
 
     async insertUser(userDto: User): Promise<ResultEntity>{
         try {
+            const resultEntity = new ResultEntity()
             /**
              * check user is already
              */
-            // const userAlready =  await this.findOne(userDto.username)//แก้ async ตอน throw exception
             const userAlready = await this.findOne(userDto.username);
             if (userAlready && userAlready.username !== null) {
-                throw new ConflictException('user is already');
+                // throw new ConflictException('user is already');
+                resultEntity.errorMessage = "User is already";
+                resultEntity.isError = true;
+                return resultEntity;
             }
             const user: User[] = [];
             /**
@@ -67,7 +74,7 @@ export class UsersService {
             const userRegistered = await this.userRepository
             .query(`EXEC [oni].[SP_REGISTER_USER] @0, @1, @2, @3`,[userDto.username,`${hashPassword}`,1,date]);
             // const resultMapping = this.dataMapping(User, userRegistered);
-            const resultEntity = new ResultEntity()
+            
             if(userRegistered){
                 resultEntity.result = 'SUCCESS'
             }
@@ -111,6 +118,11 @@ export class UsersService {
         })
 
         return token;
+    }
+
+    async sendEmailForVerifyCode(email : string): Promise<any>{
+        const emailResponse = await this.emailService.sendMail(email)
+        return emailResponse;
     }
 
     private comparePassword = async (password: string, existPassword: string) => {

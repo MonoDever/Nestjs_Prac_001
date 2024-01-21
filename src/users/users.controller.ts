@@ -7,6 +7,12 @@ import { UserEntity } from './Entities/userEntity';
 export class UsersController {
 constructor(private userService: UsersService){}
 
+    @Post('sendEmailForVerifyCode')
+    async sendEmailForVerifyCode(): Promise<any>{
+      const result = await this.userService.sendEmailForVerifyCode("test");
+      return result;
+    }
+
     @Get('health')
     health(): string {
         return "this is users";

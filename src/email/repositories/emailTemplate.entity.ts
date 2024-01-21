@@ -1,22 +1,18 @@
 import { Column, Entity, PrimaryColumn, PrimaryGeneratedColumn } from "typeorm";
 
 @Entity()
-export class UserRepository {
+export class EmailTemplate{
     @PrimaryGeneratedColumn()
     id: number;
+    @Column({type:'text',nullable:true})
+    templateId: string;
     @Column()
-    userId: string;
-    @Column({ length: 150 })
-    username: string;
-    @Column('text') 
-    password: string;
-    @Column({type:'text',nullable: true})
-    refresh: string;
+    mailSubject: string;
     @Column()
-    isActive: boolean;
-    @Column('text')
+    mailBody: string;
+    @Column({type:'text',nullable:true})
     createdBy: string;
-    @Column({ type: 'datetime' })
+    @Column({ type: 'datetime',nullable: true })
     createdDate: Date;
     @Column({type:'text',nullable: true})
     updatedBy: string;
