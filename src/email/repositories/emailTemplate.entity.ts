@@ -8,7 +8,7 @@ export class EmailTemplate{
     templateId: string;
     @Column()
     mailSubject: string;
-    @Column()
+    @Column({length:"MAX"})
     mailBody: string;
     @Column({type:'text',nullable:true})
     createdBy: string;
