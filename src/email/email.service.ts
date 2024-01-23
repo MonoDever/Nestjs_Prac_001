@@ -61,18 +61,37 @@ export class EmailService {
         /**
          * Insert log
          */
-        const dateNow = await setDateUTC();
-        const sentEmailLogModel = new SentEmailLog()
-        sentEmailLogModel.mailTo = body.email;
-        sentEmailLogModel.mailSubject = mailSubjectTemplate;
-        sentEmailLogModel.mailBody = mailBodyTemplate;
-        sentEmailLogModel.templateId = "VER001";
-        sentEmailLogModel.sentDate = dateNow;
-        sentEmailLogModel.createdDate = dateNow;
-        sentEmailLogModel.createdBy = body.email;
-        const log = await this.sentEmailLogRepository.save(sentEmailLogModel)
-        console.log("Message sent: ", info.messageId);
+        if(info.messageId){
+            const dateNow = await setDateUTC();
+            const sentEmailLogModel = new SentEmailLog()
+            sentEmailLogModel.mailTo = body.email;
+            sentEmailLogModel.mailSubject = mailSubjectTemplate;
+            sentEmailLogModel.mailBody = mailBodyTemplate;
+            sentEmailLogModel.templateId = "VER001";
+            sentEmailLogModel.verifyCode = code.toString();
+            sentEmailLogModel.sentDate = dateNow;
+            sentEmailLogModel.createdDate = dateNow;
+            sentEmailLogModel.createdBy = body.email;
+            const log = await this.sentEmailLogRepository.save(sentEmailLogModel)
+            console.log("Message sent: ", info.messageId);
+        }
 
         return info.messageId
+    }
+
+    async getLogVerifyCode(mailTo:string): Promise<any>{
+        mailTo = 'monorunza@gmail.com'
+        const code = await this.sentEmailLogRepository.find({
+            where:{
+                mailTo : mailTo
+            },
+            order:{
+                id: "DESC"
+            }
+        })
+        if(code){
+
+        }
+        return code[0].verifyCode ;
     }
 }

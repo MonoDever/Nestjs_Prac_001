@@ -13,6 +13,18 @@ constructor(private userService: UsersService){}
       return result;
     }
 
+    @Post('getLogVerifyCode')
+    async getLogVerifyCode(email: string): Promise<any>{
+      const result = await this.userService.getLogVerifyCode(email);
+      return result;
+    }
+
+    @Post('validateVerifyCode')
+    async validateVerifyCode(@Body() dto : {email: string,code: string}): Promise<any>{
+      const result = await this.userService.validateVerifyCode(dto.email,dto.code);
+      return result;
+    }
+
     @Get('health')
     health(): string {
         return "this is users";

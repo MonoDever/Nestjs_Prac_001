@@ -125,12 +125,27 @@ export class UsersService {
         return emailResponse;
     }
 
+    async getLogVerifyCode(email : string): Promise<any>{
+        const response = await this.emailService.getLogVerifyCode(email)
+        return response;
+    } 
+
+    async validateVerifyCode(email: string,code: string): Promise<any>{
+        const resultEntity = new ResultEntity()
+        const verifyCode = await this.emailService.getLogVerifyCode(email);
+        if(code == verifyCode){
+            resultEntity.result = "Success"
+        }else{
+            resultEntity.result = "Fail"
+        }
+        return resultEntity;
+    }
+
     private comparePassword = async (password: string, existPassword: string) => {
 
         const isPasswordCorrect = await bcrypt.compare(password, existPassword);
         return isPasswordCorrect;
     }
-
 
     private setDateUTC = () => {
         const today = new Date();

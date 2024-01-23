@@ -1,25 +1,27 @@
 import { Column, Entity, PrimaryGeneratedColumn } from "typeorm";
 
 @Entity()
-export class SentEmailLog{
+export class SentEmailLog {
     @PrimaryGeneratedColumn()
     id: number;
     @Column()
     templateId: string;
+    @Column({ length: "6" })
+    verifyCode: string;
     @Column()
     mailSubject: string;
-    @Column({length:"MAX"})
+    @Column({ length: "MAX" })
     mailBody: string;
     @Column()
     mailTo: string;
-    @Column({ type: 'datetime',nullable: true })
+    @Column({ type: 'datetime', nullable: true })
     sentDate: Date;
-    @Column({type:'text',nullable:true})
+    @Column({ type: 'text', nullable: true })
     createdBy: string;
-    @Column({ type: 'datetime',nullable: true })
+    @Column({ type: 'datetime', nullable: true })
     createdDate: Date;
-    @Column({type:'text',nullable: true})
+    @Column({ type: 'text', nullable: true })
     updatedBy: string;
-    @Column({ type: 'datetime',nullable: true })
+    @Column({ type: 'datetime', nullable: true })
     updatedDate: Date;
 }
