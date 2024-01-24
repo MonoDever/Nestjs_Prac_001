@@ -2,26 +2,21 @@ import { Body, Controller, Get, Post } from '@nestjs/common';
 import { UsersService } from './users.service';
 import { User } from './interfaces/user.interface';
 import { UserEntity } from './Entities/userEntity';
+import { EmailInterface } from 'src/email/interfaces/email.interface';
 
 @Controller('users')
 export class UsersController {
 constructor(private userService: UsersService){}
 
     @Post('sendEmailForVerifyCode')
-    async sendEmailForVerifyCode(): Promise<any>{
-      const result = await this.userService.sendEmailForVerifyCode("test");
-      return result;
-    }
-
-    @Post('getLogVerifyCode')
-    async getLogVerifyCode(email: string): Promise<any>{
-      const result = await this.userService.getLogVerifyCode(email);
+    async sendEmailForVerifyCode(@Body() dto : EmailInterface): Promise<any>{
+      const result = await this.userService.sendEmailForVerifyCode(dto);
       return result;
     }
 
     @Post('validateVerifyCode')
-    async validateVerifyCode(@Body() dto : {email: string,code: string}): Promise<any>{
-      const result = await this.userService.validateVerifyCode(dto.email,dto.code);
+    async validateVerifyCode(@Body() dto : EmailInterface): Promise<any>{
+      const result = await this.userService.validateVerifyCode(dto);
       return result;
     }
 
@@ -41,59 +36,4 @@ constructor(private userService: UsersService){}
         const user = this.userService.findOne(userDto.username);
         return user;
     }
-
-    @Post('getdata')// main work
-  async getData(@Body()data: any) {
-    const listItem = data.pr
-    const listPo = data.po
-    const listObj = []
-    const listpurePO = []
-    let obj = null
-    let havepo  = null
-
-    listItem.forEach((item, index) => {
-      listPo.forEach(po => {
-        if (item == po.BANFN) {
-          if (po.LOEKZ == undefined) {
-            obj = null;
-            obj = {pr:null,po:null,popr:null}
-            obj.pr = item,
-              obj.po = po.EBELN
-              obj.popr = po.BANFN
-              havepo = null
-            havepo =  listObj.find(item => item.pr == obj.pr)
-            if(havepo == undefined){
-                listObj.push(obj) 
-                listpurePO.push(obj.po)
-            }
-            return;
-          }
-        }
-      });
-    });
-    // listItem.forEach((item, index) => {
-    //     listPo.forEach(po => {
-    //       if (item == po.BANFN) {
-    //         if (po.LOEKZ == undefined) {
-    //           obj = null;
-    //           obj = {pr:null,po:null,popr:null}
-    //           obj.pr = item,
-    //             obj.po = po.KONNR
-    //             obj.popr = po.BANFN
-    //             havepo = null
-    //           havepo =  listObj.find(item => item.pr == obj.pr)
-    //           if(havepo == undefined){
-    //               listObj.push(obj) 
-    //           }
-    //           return;
-    //         }
-    //       }
-    //     });
-    //   });
-
-
-    console.log(JSON.stringify(listObj))
-    return {listObj,listpurePO}
-
-  }
 }

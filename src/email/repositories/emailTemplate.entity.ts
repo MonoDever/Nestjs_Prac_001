@@ -4,7 +4,7 @@ import { Column, Entity, PrimaryColumn, PrimaryGeneratedColumn } from "typeorm";
 export class EmailTemplate{
     @PrimaryGeneratedColumn()
     id: number;
-    @Column({type:'text',nullable:true})
+    @Column({nullable:true})
     templateId: string;
     @Column()
     mailSubject: string;

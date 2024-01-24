@@ -4,9 +4,11 @@ import { Repository } from 'typeorm';
 import { InjectRepository } from '@nestjs/typeorm';
 import { User } from './interfaces/user.interface';
 import { UserEntity } from './Entities/userEntity';
-import { ResultEntity} from './Entities/resultEntity';
+import { ResultEntity } from './Entities/resultEntity';
 import { EmailService } from 'src/email/email.service';
 import { deserialize, serialize } from 'v8';
+import { validateEmail } from 'src/common/utility';
+import { EmailInterface } from 'src/email/interfaces/email.interface';
 
 const JWT = require('jsonwebtoken')
 const bcrypt = require('bcrypt');
@@ -17,9 +19,9 @@ const saltRounds = 10;
 export class UsersService {
     constructor(@InjectRepository(UserRepository)
     private readonly userRepository: Repository<UserRepository>,
-    private emailService : EmailService
+        private emailService: EmailService
     ) { }
-    
+
 
     async findAll(): Promise<UserEntity[]> {
         const result = await this.userRepository.find();
@@ -33,17 +35,17 @@ export class UsersService {
                 username: username
             }
         });
-        if(userResult.length > 0){
+        if (userResult.length > 0) {
             const { id, ...result } = userResult[0];
             const resultMapping = this.dataMapping(UserEntity, result);
             const userEntity: UserEntity = resultMapping;
             return userEntity;
-        }else{
+        } else {
             return new UserEntity();
         }
     }
 
-    async insertUser(userDto: User): Promise<ResultEntity>{
+    async insertUser(userDto: User): Promise<ResultEntity> {
         try {
             const resultEntity = new ResultEntity()
             /**
@@ -72,15 +74,15 @@ export class UsersService {
 
             // const userRegistered = this.userRepository.save(newUser)
             const userRegistered = await this.userRepository
-            .query(`EXEC [oni].[SP_REGISTER_USER] @0, @1, @2, @3`,[userDto.username,`${hashPassword}`,1,date]);
+                .query(`EXEC [oni].[SP_REGISTER_USER] @0, @1, @2, @3`, [userDto.username, `${hashPassword}`, 1, date]);
             // const resultMapping = this.dataMapping(User, userRegistered);
-            
-            if(userRegistered){
+
+            if (userRegistered) {
                 resultEntity.result = 'SUCCESS'
             }
             return resultEntity;
         } catch (err) {
-           throw await new HttpException(err.message, HttpStatus.BAD_REQUEST)
+            throw await new HttpException(err.message, HttpStatus.BAD_REQUEST)
         }
     }
     async updateUser(data: User) {
@@ -120,22 +122,39 @@ export class UsersService {
         return token;
     }
 
-    async sendEmailForVerifyCode(email : string): Promise<any>{
-        const emailResponse = await this.emailService.sendMail(email)
-        return emailResponse;
+    async sendEmailForVerifyCode(emailDTO: EmailInterface): Promise<any> {
+        const resultEntity = new ResultEntity();
+        try {
+            const validEmail = validateEmail(emailDTO.email);
+            if (!validEmail) {
+                resultEntity.result = "fail"
+                resultEntity.isError = true;
+                resultEntity.errorMessage = "Email format is incorrect.";
+                return resultEntity;
+            }
+            const emailResponse = await this.emailService.sendMail(emailDTO.email)
+            if(emailResponse){
+                resultEntity.result = "success";
+            }
+        } catch (error) {
+            resultEntity.result = "fail";
+            resultEntity.isError = true;
+            resultEntity.errorMessage = error.message;
+        }
+        return resultEntity;
     }
 
-    async getLogVerifyCode(email : string): Promise<any>{
+    async getLogVerifyCode(email: string): Promise<any> {
         const response = await this.emailService.getLogVerifyCode(email)
         return response;
-    } 
+    }
 
-    async validateVerifyCode(email: string,code: string): Promise<any>{
+    async validateVerifyCode(emailDTO: EmailInterface): Promise<any> {
         const resultEntity = new ResultEntity()
-        const verifyCode = await this.emailService.getLogVerifyCode(email);
-        if(code == verifyCode){
+        const verifyCode = await this.emailService.getLogVerifyCode(emailDTO.email);
+        if (emailDTO.verifyCode == verifyCode) {
             resultEntity.result = "Success"
-        }else{
+        } else {
             resultEntity.result = "Fail"
         }
         return resultEntity;

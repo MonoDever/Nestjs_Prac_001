@@ -26,72 +26,76 @@ export class EmailService {
     ) { }
 
     async sendMail(email: string): Promise<any> {
-        // const mailBody = await this.emailTemplateRepository.findOne({where: {templateId:"VER001"} });
-        const mailBody = await this.emailTemplateRepository.find();
-        const body = {
-            email: "monorunza@gmail.com",
+        try {
+            /**
+             * get email template
+             */
+            const mailBody = await this.emailTemplateRepository.find({
+                where: { templateId: 'VER001' }
+            });
+            /**
+             * Generate
+            */
+            let code = Math.floor(100000 + Math.random() * 900000)
+            /***
+             * Replacement
+            */
+            let mailSubjectTemplate = "";
+            let mailBodyTemplate = "";
+            if (mailBody.length > 0) {
+                mailSubjectTemplate = mailBody[0].mailSubject
+                mailBodyTemplate = mailBody[0].mailBody
+                mailBodyTemplate = mailBodyTemplate.replaceAll("{FIRSTNAME}", email)
+                mailBodyTemplate = mailBodyTemplate.replaceAll("{EMAIL}", email)
+                mailBodyTemplate = mailBodyTemplate.replaceAll("{VERIFYCODE}", code.toString())
+                mailSubjectTemplate = mailSubjectTemplate
+            }
+            /**
+             * Sendmail
+            */
+            const info = await transporter.sendMail({
+                from: "practice.practice003@gmail.com",
+                to: email,
+                subject: mailSubjectTemplate,
+                text: "Hello world?",
+                html: mailBodyTemplate
+            })
+            /**
+             * Insert log
+            */
+            if (info.messageId) {
+                const dateNow = await setDateUTC();
+                const sentEmailLogModel = new SentEmailLog()
+                sentEmailLogModel.mailTo = email;
+                sentEmailLogModel.mailSubject = mailSubjectTemplate;
+                sentEmailLogModel.mailBody = mailBodyTemplate;
+                sentEmailLogModel.templateId = "VER001";
+                sentEmailLogModel.verifyCode = code.toString();
+                sentEmailLogModel.sentDate = dateNow;
+                sentEmailLogModel.createdDate = dateNow;
+                sentEmailLogModel.createdBy = email;
+                const log = await this.sentEmailLogRepository.save(sentEmailLogModel)
+                console.log("Message sent: ", info.messageId);
+            }
+            return info.messageId
+        } catch (error) {
+            return null;
         }
-        /**
-         * Generate
-         */
-        let code = Math.floor(100000 + Math.random() * 900000)
-        /***
-         * Replacement
-         */
-        let mailSubjectTemplate = "";
-        let mailBodyTemplate = "";
-        if (mailBody.length > 0) {
-            mailSubjectTemplate = mailBody[0].mailSubject
-            mailBodyTemplate = mailBody[0].mailBody
-            mailBodyTemplate = mailBodyTemplate.replaceAll("{FIRSTNAME}", body.email)
-            mailBodyTemplate = mailBodyTemplate.replaceAll("{EMAIL}", body.email)
-            mailBodyTemplate = mailBodyTemplate.replaceAll("{VERIFYCODE}", code.toString())
-            mailSubjectTemplate = mailSubjectTemplate
-        }
-        /**
-         * Sendmail
-         */
-        const info = await transporter.sendMail({
-            from: "practice.practice003@gmail.com",
-            to: body.email,
-            subject: mailSubjectTemplate,
-            text: "Hello world?",
-            html: mailBodyTemplate
-        })
-        /**
-         * Insert log
-         */
-        if(info.messageId){
-            const dateNow = await setDateUTC();
-            const sentEmailLogModel = new SentEmailLog()
-            sentEmailLogModel.mailTo = body.email;
-            sentEmailLogModel.mailSubject = mailSubjectTemplate;
-            sentEmailLogModel.mailBody = mailBodyTemplate;
-            sentEmailLogModel.templateId = "VER001";
-            sentEmailLogModel.verifyCode = code.toString();
-            sentEmailLogModel.sentDate = dateNow;
-            sentEmailLogModel.createdDate = dateNow;
-            sentEmailLogModel.createdBy = body.email;
-            const log = await this.sentEmailLogRepository.save(sentEmailLogModel)
-            console.log("Message sent: ", info.messageId);
-        }
-
-        return info.messageId
     }
 
-    async getLogVerifyCode(mailTo:string): Promise<any>{
+    async getLogVerifyCode(mailTo: string): Promise<any> {
         mailTo = 'monorunza@gmail.com'
         const code = await this.sentEmailLogRepository.find({
-            where:{
-                mailTo : mailTo
+            where: {
+                mailTo: mailTo
             },
-            order:{
+            order: {
                 id: "DESC"
             }
         })
-        if(code){
+        if (code) {
 
         }
-        return code[0].verifyCode ;
+        return code[0].verifyCode;
     }
 }
