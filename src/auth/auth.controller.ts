@@ -31,4 +31,9 @@ export class AuthController {
     getProfile(@Request() req) {
         return req.user;
     }
+    @Post('changePassword')
+    async changePassword(@Body() dto : User): Promise<any>{
+        const response = await this.authService.changePassword(dto);
+        return response;
+    }
 }

@@ -83,11 +83,10 @@ export class EmailService {
         }
     }
 
-    async getLogVerifyCode(mailTo: string): Promise<any> {
-        mailTo = 'monorunza@gmail.com'
+    async getLogVerifyCode(email: string): Promise<any> {
         const code = await this.sentEmailLogRepository.find({
             where: {
-                mailTo: mailTo
+                mailTo: email
             },
             order: {
                 id: "DESC"

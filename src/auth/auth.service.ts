@@ -56,6 +56,11 @@ export class AuthService {
         return result
     }
 
+    async changePassword(userDto: User): Promise<any>{
+        const result = this.userService.changePassword(userDto);
+        return result ;
+    }
+
     private comparePassword = async (password: string, existPassword: string) => {
 
         const isPasswordCorrect = await bcrypt.compare(password, existPassword);

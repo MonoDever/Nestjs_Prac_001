@@ -45,6 +45,15 @@ export class UsersService {
         }
     }
 
+    async findUser(username: string): Promise<UserRepository>{
+        const result = await this.userRepository.find({
+            where: {
+                username: username
+            }
+        });
+        return result[0];
+    }
+
     async insertUser(userDto: User): Promise<ResultEntity> {
         try {
             const resultEntity = new ResultEntity()
@@ -85,6 +94,33 @@ export class UsersService {
             throw await new HttpException(err.message, HttpStatus.BAD_REQUEST)
         }
     }
+    async changePassword(userDto: User): Promise<ResultEntity> {
+        const resultEntity = new ResultEntity();
+        try {
+            /**
+                 * check user is already
+                 */
+            const userAlready = await this.findUser(userDto.username);
+            if (!(userAlready && userAlready.username !== null)) {
+                resultEntity.errorMessage = "User is not already";
+                resultEntity.isError = true;
+            }
+            /**
+             * check password
+             */
+            const hashPassword = bcrypt.hashSync(userDto.password, saltRounds);
+            userAlready.password = hashPassword;
+            const user = await this.userRepository.save(userAlready);
+            if (user) {
+                resultEntity.result = "success"
+            }
+
+        } catch (error) {
+            resultEntity.errorMessage = error.message
+        }
+        return resultEntity;
+    }
+
     async updateUser(data: User) {
         const user = await this.userRepository.find({
             where: {
@@ -133,7 +169,7 @@ export class UsersService {
                 return resultEntity;
             }
             const emailResponse = await this.emailService.sendMail(emailDTO.email)
-            if(emailResponse){
+            if (emailResponse) {
                 resultEntity.result = "success";
             }
         } catch (error) {
@@ -153,9 +189,9 @@ export class UsersService {
         const resultEntity = new ResultEntity()
         const verifyCode = await this.emailService.getLogVerifyCode(emailDTO.email);
         if (emailDTO.verifyCode == verifyCode) {
-            resultEntity.result = "Success"
+            resultEntity.result = "success"
         } else {
-            resultEntity.result = "Fail"
+            resultEntity.result = "fail"
         }
         return resultEntity;
     }
