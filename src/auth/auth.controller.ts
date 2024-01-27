@@ -16,8 +16,8 @@ export class AuthController {
     }
     @HttpCode(HttpStatus.OK)
     @Post('login')
-    signIn(@Body()signInDTO: User): Promise<any>{
-        const user = this.authService.signIn(signInDTO);
+    async signIn(@Body()signInDTO: User): Promise<any>{
+        const user = await this.authService.signIn(signInDTO);
         return user;
     }
     @UseGuards(RefreshGuard)
