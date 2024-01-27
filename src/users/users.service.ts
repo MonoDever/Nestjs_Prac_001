@@ -168,6 +168,13 @@ export class UsersService {
                 resultEntity.errorMessage = "Email format is incorrect.";
                 return resultEntity;
             }
+            const user = await this.findUser(emailDTO.email)
+            if(!user){
+                resultEntity.result = "fail"
+                resultEntity.isError = true;
+                resultEntity.errorMessage = "Email is not already in system.";
+                return resultEntity;
+            }
             const emailResponse = await this.emailService.sendMail(emailDTO.email)
             if (emailResponse) {
                 resultEntity.result = "success";
