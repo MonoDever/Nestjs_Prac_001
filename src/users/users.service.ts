@@ -1,14 +1,15 @@
 import { ConflictException, HttpException, HttpStatus, Injectable, UnauthorizedException } from '@nestjs/common';
 import { UserRepository } from './Repositories/userRepository.entity';
-import { Repository } from 'typeorm';
+import { Connection, Repository, getConnection, DataSource } from 'typeorm';
 import { InjectRepository } from '@nestjs/typeorm';
-import { User } from './interfaces/user.interface';
+import { User, updateUserDto } from './interfaces/user.interface';
 import { UserEntity } from './Entities/userEntity';
 import { ResultEntity } from './Entities/resultEntity';
 import { EmailService } from 'src/email/email.service';
 import { deserialize, serialize } from 'v8';
 import { validateEmail } from 'src/common/utility';
 import { EmailInterface } from 'src/email/interfaces/email.interface';
+import { UserDirectory } from './Repositories/userDirectory.entity';
 
 const JWT = require('jsonwebtoken')
 const bcrypt = require('bcrypt');
@@ -17,11 +18,14 @@ const saltRounds = 10;
 
 @Injectable()
 export class UsersService {
-    constructor(@InjectRepository(UserRepository)
-    private readonly userRepository: Repository<UserRepository>,
-        private emailService: EmailService
+    constructor(
+        @InjectRepository(UserRepository)
+        private readonly userRepository: Repository<UserRepository>,
+        @InjectRepository(UserDirectory)
+        private readonly userdirectoryRepository: Repository<UserDirectory>,
+        private emailService: EmailService,
+        private dataSource: DataSource
     ) { }
-
 
     async findAll(): Promise<UserEntity[]> {
         const result = await this.userRepository.find();
@@ -45,13 +49,44 @@ export class UsersService {
         }
     }
 
-    async findUser(username: string): Promise<UserRepository>{
+    async findUser(username: string): Promise<UserRepository> {
         const result = await this.userRepository.find({
             where: {
                 username: username
             }
         });
         return result[0];
+    }
+    async findLatestUser(): Promise<UserRepository> {
+        const result = await this.userRepository.createQueryBuilder().orderBy("id", "DESC").getOne()
+        return result;
+    }
+
+    async setUserId(): Promise<string> {
+        const latesUser = await this.findLatestUser();
+        let newUserId = ''
+        if (latesUser.userId != null) {
+            const userId = latesUser.userId
+            const yearNow = this.getYear();
+            let userPrefix = 'ONI'
+            let userYear = userId.slice(3, 7)
+            let userRunning = userId.slice(7, 11)
+            if (userYear == yearNow.toString()) {
+                let number = parseInt(userRunning)
+                userRunning = String(number + 1).padStart(4, '0')
+            } else {
+                userYear = yearNow.toString()
+                userRunning = String(1).padStart(4, '0')
+            }
+            newUserId = userPrefix + userYear + userRunning
+        } else {
+            let userPrefix = 'ONI'
+            let userYear = this.getYear
+            let userRunning = String(1).padStart(4, '0')
+            newUserId = userPrefix + userYear + userRunning
+        }
+
+        return newUserId;
     }
 
     async insertUser(userDto: User): Promise<ResultEntity> {
@@ -69,28 +104,45 @@ export class UsersService {
             }
             const user: User[] = [];
             /**
+             * set unique userId
+             */
+            const newUserId = await this.setUserId();
+            /**
              * hash password and set user model
              */
             const hashPassword = bcrypt.hashSync(userDto.password, saltRounds);
             let date = this.setDateUTC();
             const newUser = new UserRepository();
-            newUser.userId = userDto.userId = 'test';//todo
+            newUser.userId = newUserId;
             newUser.username = userDto.username;
             newUser.password = hashPassword;
             newUser.isActive = true;
-            newUser.createdBy = "SYSTEM";
+            newUser.createdBy = userDto.username;
             newUser.createdDate = date;
 
-            // const userRegistered = this.userRepository.save(newUser)
-            const userRegistered = await this.userRepository
-                .query(`EXEC [oni].[SP_REGISTER_USER] @0, @1, @2, @3`, [userDto.username, `${hashPassword}`, 1, date]);
-            // const resultMapping = this.dataMapping(User, userRegistered);
+            const newUserDirectory = new UserDirectory()
+            newUserDirectory.email = userDto.username;
+            newUserDirectory.userId = newUserId;
+            newUserDirectory.createdBy = userDto.username;
+            newUserDirectory.createdDate = date;
 
-            if (userRegistered) {
+            let transResult1 = null;
+            let transResult2 = null;
+
+            await this.dataSource.transaction(async transactionEntityManager =>{
+                transResult1 = await transactionEntityManager.save(newUserDirectory)
+                newUser.userDirectory = transResult1
+                transResult2 = await transactionEntityManager.save(newUser)
+            })
+            //     .query(`EXEC [oni].[SP_REGISTER_USER] @0, @1, @2, @3`, [userDto.username, `${hashPassword}`, 1, date]);
+
+            // const resultMapping = this.dataMapping(User, userRegistered);
+            if (transResult1 && transResult2) {
                 resultEntity.result = 'SUCCESS'
             }
             return resultEntity;
         } catch (err) {
+            console.log(err)
             throw await new HttpException(err.message, HttpStatus.BAD_REQUEST)
         }
     }
@@ -169,7 +221,7 @@ export class UsersService {
                 return resultEntity;
             }
             const user = await this.findUser(emailDTO.email)
-            if(!user){
+            if (!user) {
                 resultEntity.result = "fail"
                 resultEntity.isError = true;
                 resultEntity.errorMessage = "Email is not already in system.";
@@ -203,6 +255,24 @@ export class UsersService {
         return resultEntity;
     }
 
+    async getUserDirectory(userId : string): Promise<UserDirectory>{
+        const userDirectory = await this.userdirectoryRepository.find({
+            where:{
+                userId : userId
+            }
+        })
+        return userDirectory[0];
+    }
+
+    async updateUserDirectory(userId: string,updateUserDto: updateUserDto){
+        const userDirectory = await this.getUserDirectory(userId);
+        userDirectory.firstname = updateUserDto.firstname;
+        userDirectory.lastname = updateUserDto.lastname;
+        userDirectory.phone = updateUserDto.phone;
+        const result = this.userdirectoryRepository.save(userDirectory)
+        return result;
+    }
+
     private comparePassword = async (password: string, existPassword: string) => {
 
         const isPasswordCorrect = await bcrypt.compare(password, existPassword);
@@ -220,6 +290,14 @@ export class UsersService {
         const milliSeconds = today.getUTCMilliseconds();
         let dateUTC = Date.UTC(year, month, day, hours, minutes, seconds, milliSeconds)
         return new Date(dateUTC);
+    }
+
+    private getYear = () => {
+        const today = new Date();
+        const year = today.getUTCFullYear();
+        const month = today.getUTCMonth() + 1;
+        const day = today.getUTCDate();
+        return year;
     }
 
 

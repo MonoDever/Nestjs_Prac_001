@@ -3,19 +3,19 @@ import { Request } from "express";
 const JWT = require('jsonwebtoken')
 
 @Injectable()
-export class AuthGuard implements CanActivate{
+export class AuthGuard implements CanActivate {
 
-    async canActivate(context: ExecutionContext): Promise<boolean>{
+    async canActivate(context: ExecutionContext): Promise<boolean> {
         const secretkey = process.env.SECRET_KEY;
         const request = context.switchToHttp().getRequest();
-        const token = this.extractTokenFromHeader(request);
-        if(!token){
+        const token = await this.extractTokenFromHeader(request);
+        if (!token) {
             throw new UnauthorizedException;
         }
         try {
-            const payload = await JWT.verify(token,secretkey)
+            const payload = await JWT.verify(token, secretkey)
             request['user'] = payload;
-        }catch(err){
+        } catch (err) {
             throw new UnauthorizedException();
         }
         return true;

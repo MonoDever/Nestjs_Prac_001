@@ -1,10 +1,10 @@
-import { Column, Entity, PrimaryColumn, PrimaryGeneratedColumn } from "typeorm";
-
+import { Column, Entity, JoinColumn, OneToOne, PrimaryColumn, PrimaryGeneratedColumn } from "typeorm";
+import { UserDirectory } from "./userDirectory.entity";
 @Entity()
 export class UserRepository {
     @PrimaryGeneratedColumn()
     id: number;
-    @Column()
+    @PrimaryColumn()
     userId: string;
     @Column({ length: 150 })
     username: string;
@@ -22,4 +22,7 @@ export class UserRepository {
     updatedBy: string;
     @Column({ type: 'datetime',nullable: true })
     updatedDate: Date;
+    @OneToOne(type => UserDirectory)
+    @JoinColumn()
+    userDirectory: UserDirectory
 }

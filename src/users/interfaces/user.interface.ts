@@ -13,3 +13,9 @@ export class User {
     updatedBy: string;
     updatedDate: Date;
 }
+
+export class updateUserDto{
+    firstname: string;
+    lastname: string;
+    phone: string;
+}

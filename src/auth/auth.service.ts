@@ -34,7 +34,7 @@ export class AuthService {
         const token = JWT.sign({
             id: user.userId,
         },secretKey,{
-            expiresIn: 60
+            expiresIn: 1800
         })
 
         const refreshToken = JWT.sign({

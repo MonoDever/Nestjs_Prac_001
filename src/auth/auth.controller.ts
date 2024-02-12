@@ -7,22 +7,24 @@ import { RefreshGuard } from './guard/refresh.quard';
 
 @Controller('auth')
 export class AuthController {
-    constructor(private authService: AuthService) {}
+    constructor(private authService: AuthService) { }
 
     @Post('register')
-    register(@Body() userDto: User): Promise<any>{
+    register(@Body() userDto: User): Promise<any> {
+        console.log(JSON.stringify(userDto))
+        console.log(JSON.stringify(userDto.username))
         const result = this.authService.register(userDto);
         return result;
     }
     @HttpCode(HttpStatus.OK)
     @Post('login')
-    async signIn(@Body()signInDTO: User): Promise<any>{
+    async signIn(@Body() signInDTO: User): Promise<any> {
         const user = await this.authService.signIn(signInDTO);
         return user;
     }
     @UseGuards(RefreshGuard)
     @Post('refresh')
-    refresh(@Request()req, @Body()refreshDTO: User): Promise<any>{
+    refresh(@Request() req, @Body() refreshDTO: User): Promise<any> {
         const user = req.user;
         return user;
     }
@@ -32,7 +34,7 @@ export class AuthController {
         return req.user;
     }
     @Post('changePassword')
-    async changePassword(@Body() dto : User): Promise<any>{
+    async changePassword(@Body() dto: User): Promise<any> {
         const response = await this.authService.changePassword(dto);
         return response;
     }
