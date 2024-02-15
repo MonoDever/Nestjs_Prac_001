@@ -10,6 +10,7 @@ import { deserialize, serialize } from 'v8';
 import { validateEmail } from 'src/common/utility';
 import { EmailInterface } from 'src/email/interfaces/email.interface';
 import { UserDirectory } from './Repositories/userDirectory.entity';
+import { resultentity } from 'src/common/resultentity';
 
 const JWT = require('jsonwebtoken')
 const bcrypt = require('bcrypt');
@@ -89,17 +90,18 @@ export class UsersService {
         return newUserId;
     }
 
-    async insertUser(userDto: User): Promise<ResultEntity> {
+    async insertUser(userDto: User): Promise<resultentity> {
+        const resultEntity = new resultentity()
         try {
-            const resultEntity = new ResultEntity()
             /**
              * check user is already
              */
             const userAlready = await this.findOne(userDto.username);
             if (userAlready && userAlready.username !== null) {
                 // throw new ConflictException('user is already');
-                resultEntity.errorMessage = "User is already";
-                resultEntity.isError = true;
+                resultEntity.errorMassage = "User is already";
+                resultEntity.statusCode = HttpStatus.BAD_REQUEST
+                resultEntity.status = false
                 return resultEntity;
             }
             const user: User[] = [];
@@ -111,7 +113,7 @@ export class UsersService {
              * hash password and set user model
              */
             const hashPassword = bcrypt.hashSync(userDto.password, saltRounds);
-            let date = this.setDateUTC();
+            let date = this.getDateUTC();
             const newUser = new UserRepository();
             newUser.userId = newUserId;
             newUser.username = userDto.username;
@@ -135,15 +137,21 @@ export class UsersService {
                 transResult2 = await transactionEntityManager.save(newUser)
             })
             //     .query(`EXEC [oni].[SP_REGISTER_USER] @0, @1, @2, @3`, [userDto.username, `${hashPassword}`, 1, date]);
-
             // const resultMapping = this.dataMapping(User, userRegistered);
             if (transResult1 && transResult2) {
-                resultEntity.result = 'SUCCESS'
+                resultEntity.status = true;
             }
             return resultEntity;
         } catch (err) {
-            console.log(err)
-            throw await new HttpException(err.message, HttpStatus.BAD_REQUEST)
+            resultEntity.status = false;
+            resultEntity.statusCode = HttpStatus.CONFLICT;
+            resultEntity.errorMassage = err.toString();
+            return resultEntity;
+            // throw await new HttpException(err.message, HttpStatus.BAD_REQUEST)
+        } finally{
+            resultEntity.methodName = 'insertUser';
+            resultEntity.timeNow = this.getDateUTC();
+            console.log(resultEntity);
         }
     }
     async changePassword(userDto: User): Promise<ResultEntity> {
@@ -279,7 +287,7 @@ export class UsersService {
         return isPasswordCorrect;
     }
 
-    private setDateUTC = () => {
+    private getDateUTC = () => {
         const today = new Date();
         const year = today.getUTCFullYear();
         const month = today.getUTCMonth() + 1;
@@ -304,7 +312,7 @@ export class UsersService {
     private dataMapping = (classType, origin: any) => {
         let instance = new classType();
         Object.keys(origin).forEach((key) => {
-            console.log(origin[key])
+            // console.log(origin[key])
             Object.keys(instance).forEach((instanceKey) => {
                 if (instanceKey == key) {
                     instance[instanceKey] = origin[key]

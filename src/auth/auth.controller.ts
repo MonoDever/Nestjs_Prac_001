@@ -11,8 +11,6 @@ export class AuthController {
 
     @Post('register')
     register(@Body() userDto: User): Promise<any> {
-        console.log(JSON.stringify(userDto))
-        console.log(JSON.stringify(userDto.username))
         const result = this.authService.register(userDto);
         return result;
     }

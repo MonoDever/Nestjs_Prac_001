@@ -1,4 +1,9 @@
+import { resultentity } from "src/common/resultentity";
+
 export class UserEntity {
+    constructor(){
+        this.result = new resultentity();
+    }
     userId?: string = null;
     username?: string= null;
     password: string= null;
@@ -9,6 +14,7 @@ export class UserEntity {
     // updatedDate: Date;
     userInfo: UserInformationEntity;
     auth: AuthenEntity;
+    result: resultentity;
 }
 export class UserInformationEntity{
     firstname: string;
