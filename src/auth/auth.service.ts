@@ -1,9 +1,8 @@
 import { ConflictException, HttpStatus, Injectable, UnauthorizedException } from '@nestjs/common';
-import { ResultEntity } from 'src/users/Entities/resultEntity';
 import { AuthenEntity, UserEntity } from 'src/users/Entities/userEntity';
 import { User } from 'src/users/interfaces/user.interface';
 import { UsersService } from 'src/users/users.service';
-import { resultentity } from 'src/common/resultentity';
+import { ResultEntity } from 'src/common/entities/resultentity';
 const JWT = require('jsonwebtoken')
 const bcrypt = require('bcrypt');
 const saltRounds = 10;
@@ -12,7 +11,7 @@ const _ = require('lodash');
 export class AuthService {
     constructor(private userService: UsersService) { }
 
-    async register(userDto: User): Promise<resultentity> {
+    async register(userDto: User): Promise<ResultEntity> {
         try {
             const result = await this.userService.insertUser(userDto);
             return result;
@@ -35,7 +34,7 @@ export class AuthService {
                 userEntity.username = userDto.username;
                 userEntity.result.status = false;
                 userEntity.result.statusCode = HttpStatus.BAD_REQUEST;
-                userEntity.result.errorMassage = 'user is incorrect'
+                userEntity.result.errorMessage = 'user is incorrect'
                 return userEntity;
             }
             const resultCompare = await this.comparePassword(userDto.password, userEntity.password);
@@ -43,7 +42,7 @@ export class AuthService {
                 // throw new UnauthorizedException();
                 userEntity.result.status = false;
                 userEntity.result.statusCode = HttpStatus.UNAUTHORIZED;
-                userEntity.result.errorMassage = HttpStatus.UNAUTHORIZED.toString()
+                userEntity.result.errorMessage = HttpStatus.UNAUTHORIZED.toString()
                 return userEntity;
             }
 
@@ -80,7 +79,7 @@ export class AuthService {
         } catch (error) {
             userEntity.result.status = false;
             userEntity.result.statusCode = HttpStatus.CONFLICT;
-            userEntity.result.errorMassage = error.message;
+            userEntity.result.errorMessage = error.message;
         } finally {
             userEntity.result.methodName = 'signIn';
             userEntity.result.timeNow = this.getDateUTC();

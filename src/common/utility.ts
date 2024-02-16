@@ -11,7 +11,7 @@ export const setDateUTC = () => {
     return new Date(dateUTC);
 }
 
-export const validateEmail = (email: string) =>{
+export const validateEmail = (email: string) => {
     var pattern = /^(([^<>()[\]\\.,;:\s@"]+(\.[^<>()[\]\\.,;:\s@"]+)*)|.(".+"))@((\[[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\])|(([a-zA-Z\-0-9]+\.)+[a-zA-Z]{2,}))$/;
     var output = email.match(pattern);
     if (output != null) {
@@ -19,4 +19,8 @@ export const validateEmail = (email: string) =>{
     } else {
         return false;
     }
+}
+
+export const timerTask = () => {
+    
 }

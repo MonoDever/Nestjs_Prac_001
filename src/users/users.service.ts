@@ -4,13 +4,12 @@ import { Connection, Repository, getConnection, DataSource } from 'typeorm';
 import { InjectRepository } from '@nestjs/typeorm';
 import { User, updateUserDto } from './interfaces/user.interface';
 import { UserEntity } from './Entities/userEntity';
-import { ResultEntity } from './Entities/resultEntity';
 import { EmailService } from 'src/email/email.service';
 import { deserialize, serialize } from 'v8';
 import { validateEmail } from 'src/common/utility';
 import { EmailInterface } from 'src/email/interfaces/email.interface';
 import { UserDirectory } from './Repositories/userDirectory.entity';
-import { resultentity } from 'src/common/resultentity';
+import { ResultEntity } from 'src/common/entities/resultEntity';
 
 const JWT = require('jsonwebtoken')
 const bcrypt = require('bcrypt');
@@ -90,8 +89,8 @@ export class UsersService {
         return newUserId;
     }
 
-    async insertUser(userDto: User): Promise<resultentity> {
-        const resultEntity = new resultentity()
+    async insertUser(userDto: User): Promise<ResultEntity> {
+        const resultEntity = new ResultEntity()
         try {
             /**
              * check user is already
@@ -99,7 +98,7 @@ export class UsersService {
             const userAlready = await this.findOne(userDto.username);
             if (userAlready && userAlready.username !== null) {
                 // throw new ConflictException('user is already');
-                resultEntity.errorMassage = "User is already";
+                resultEntity.errorMessage = "User is already";
                 resultEntity.statusCode = HttpStatus.BAD_REQUEST
                 resultEntity.status = false
                 return resultEntity;
@@ -131,7 +130,7 @@ export class UsersService {
             let transResult1 = null;
             let transResult2 = null;
 
-            await this.dataSource.transaction(async transactionEntityManager =>{
+            await this.dataSource.transaction(async transactionEntityManager => {
                 transResult1 = await transactionEntityManager.save(newUserDirectory)
                 newUser.userDirectory = transResult1
                 transResult2 = await transactionEntityManager.save(newUser)
@@ -145,10 +144,10 @@ export class UsersService {
         } catch (err) {
             resultEntity.status = false;
             resultEntity.statusCode = HttpStatus.CONFLICT;
-            resultEntity.errorMassage = err.toString();
+            resultEntity.errorMessage = err.toString();
             return resultEntity;
             // throw await new HttpException(err.message, HttpStatus.BAD_REQUEST)
-        } finally{
+        } finally {
             resultEntity.methodName = 'insertUser';
             resultEntity.timeNow = this.getDateUTC();
             console.log(resultEntity);
@@ -163,7 +162,7 @@ export class UsersService {
             const userAlready = await this.findUser(userDto.username);
             if (!(userAlready && userAlready.username !== null)) {
                 resultEntity.errorMessage = "User is not already";
-                resultEntity.isError = true;
+                resultEntity.status = true;
             }
             /**
              * check password
@@ -172,7 +171,7 @@ export class UsersService {
             userAlready.password = hashPassword;
             const user = await this.userRepository.save(userAlready);
             if (user) {
-                resultEntity.result = "success"
+                resultEntity.status = true;
             }
 
         } catch (error) {
@@ -219,30 +218,46 @@ export class UsersService {
     }
 
     async sendEmailForVerifyCode(emailDTO: EmailInterface): Promise<any> {
+        /**
+         * TODO set timer for
+         */
+        let totalSeconds = 0;
+        function setTime() {
+            totalSeconds = totalSeconds + 1;
+        }
+        var timer = setInterval(setTime,1000);
+
         const resultEntity = new ResultEntity();
         try {
             const validEmail = validateEmail(emailDTO.email);
             if (!validEmail) {
-                resultEntity.result = "fail"
-                resultEntity.isError = true;
+                resultEntity.status = false;
+                resultEntity.statusCode = HttpStatus.BAD_REQUEST;
                 resultEntity.errorMessage = "Email format is incorrect.";
                 return resultEntity;
             }
             const user = await this.findUser(emailDTO.email)
             if (!user) {
-                resultEntity.result = "fail"
-                resultEntity.isError = true;
+                resultEntity.status = false;
+                resultEntity.statusCode = HttpStatus.BAD_REQUEST;
                 resultEntity.errorMessage = "Email is not already in system.";
                 return resultEntity;
             }
             const emailResponse = await this.emailService.sendMail(emailDTO.email)
             if (emailResponse) {
-                resultEntity.result = "success";
+                resultEntity.status = true;
+                resultEntity.statusCode = HttpStatus.OK;
             }
         } catch (error) {
-            resultEntity.result = "fail";
-            resultEntity.isError = true;
+            resultEntity.status = true;
+            resultEntity.statusCode = HttpStatus.CONFLICT;
             resultEntity.errorMessage = error.message;
+        } finally {
+            clearInterval(timer)
+            resultEntity.methodName = 'sendEmailForVerifyCode';
+            resultEntity.timeNow = this.getDateUTC()
+            resultEntity.timeUsed = `${totalSeconds} sec`
+            console.log(resultEntity)
         }
         return resultEntity;
     }
@@ -253,26 +268,50 @@ export class UsersService {
     }
 
     async validateVerifyCode(emailDTO: EmailInterface): Promise<any> {
-        const resultEntity = new ResultEntity()
-        const verifyCode = await this.emailService.getLogVerifyCode(emailDTO.email);
-        if (emailDTO.verifyCode == verifyCode) {
-            resultEntity.result = "success"
-        } else {
-            resultEntity.result = "fail"
+        /**
+         * TODO set timer for
+         */
+        let totalSeconds = 0;
+        function setTime() {
+            totalSeconds = totalSeconds + 1;
         }
-        return resultEntity;
+        var timer = setInterval(setTime,1000);
+
+        const resultEntity = new ResultEntity();
+        try{
+
+            const verifyCode = await this.emailService.getLogVerifyCode(emailDTO.email);
+            if (emailDTO.verifyCode == verifyCode) {
+                resultEntity.status = true;
+            } else {
+                resultEntity.status = false;
+                resultEntity.statusCode = HttpStatus.BAD_REQUEST;
+                resultEntity.errorMessage = 'VerifyCode is invalid';
+            }
+        }catch(error){
+            resultEntity.status = false;
+            resultEntity.statusCode = HttpStatus.CONFLICT;
+            resultEntity.errorMessage = error.message;
+        }finally{
+            clearInterval(timer);
+            resultEntity.methodName = 'validateVerifyCode';
+            resultEntity.timeNow = this.getDateUTC();
+            resultEntity.timeUsed = `${totalSeconds} sec`;
+            console.log(resultEntity)
+            return resultEntity;
+        }
     }
 
-    async getUserDirectory(userId : string): Promise<UserDirectory>{
+    async getUserDirectory(userId: string): Promise<UserDirectory> {
         const userDirectory = await this.userdirectoryRepository.find({
-            where:{
-                userId : userId
+            where: {
+                userId: userId
             }
         })
         return userDirectory[0];
     }
 
-    async updateUserDirectory(userId: string,updateUserDto: updateUserDto){
+    async updateUserDirectory(userId: string, updateUserDto: updateUserDto) {
         const userDirectory = await this.getUserDirectory(userId);
         userDirectory.firstname = updateUserDto.firstname;
         userDirectory.lastname = updateUserDto.lastname;

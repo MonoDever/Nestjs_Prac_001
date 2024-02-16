@@ -1,7 +1,7 @@
-export class resultentity{
+export class ResultEntity{
     status: boolean;
     statusCode: number;
-    errorMassage: string;
+    errorMessage: string;
     methodName: string;
     timeUsed: string;
     timeNow: Date;

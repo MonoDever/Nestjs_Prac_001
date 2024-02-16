@@ -38,6 +38,11 @@ constructor(private userService: UsersService){}
       return result;
     }
 
+
+    /**
+     * ! deprecated method : do not use : it's for test
+     */
+
     @Get('health')
     health(): string {
         return "this is users";
