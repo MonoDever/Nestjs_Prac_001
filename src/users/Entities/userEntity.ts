@@ -12,19 +12,26 @@ export class UserEntity {
     // createdDate: Date;
     // updatedBy: string;
     // updatedDate: Date;
-    userInfo: UserInformationEntity;
     auth: AuthenEntity;
     result: ResultEntity;
-}
-export class UserInformationEntity{
-    firstname: string;
-    lastname: string;
-    age: number;
-    email: string;
-    address: string;
-    mobile: string;
 }
 export class AuthenEntity{
     token: string;
     refreshtoken: string;
+}
+export class UserDirectoryModel{
+    firstname: string = null;
+    lastname: string = null;
+    age: number;
+    email: string = null;
+    address: string;
+    phone: string = null;
+}
+export class UserDirectoryEntity{
+    constructor(){
+        this.result = new ResultEntity()
+    }
+    userDirectories: Array<UserDirectoryModel> = []
+    userDirectory: UserDirectoryModel; 
+    result: ResultEntity;
 }

@@ -1,10 +1,11 @@
 import { Body, Controller, Get, Patch, Post, Request, UseGuards } from '@nestjs/common';
 import { UsersService } from './users.service';
 import { User, updateUserDto } from './interfaces/user.interface';
-import { UserEntity } from './Entities/userEntity';
+import { UserDirectoryEntity, UserDirectoryModel, UserEntity } from './Entities/userEntity';
 import { EmailInterface } from 'src/email/interfaces/email.interface';
 import { AuthGuard } from 'src/auth/guard/auth.guard';
 import { UserRepository } from './Repositories/userRepository.entity';
+import { UserDirectory } from './Repositories/userDirectory.entity';
 
 @Controller('users')
 export class UsersController {
@@ -38,14 +39,21 @@ constructor(private userService: UsersService){}
       return result;
     }
 
-
     /**
      * ! deprecated method : do not use : it's for test
      */
 
     @Get('health')
-    health(): string {
-        return "this is users";
+    async health(): Promise<UserDirectoryEntity> {
+        let userdirectory = new UserDirectory;
+        userdirectory.firstname = 'test'
+        userdirectory.lastname = 'testlast'
+        let userDirectories = [];
+        userDirectories.push(userdirectory)
+        const result = await this.userService.dataListMapping(UserDirectoryModel,userDirectories);
+        let listUserDirectoryEntity = new UserDirectoryEntity()
+        listUserDirectoryEntity.userDirectories = result;
+        return listUserDirectoryEntity;
     }
 
     @Get('getAllUser')
