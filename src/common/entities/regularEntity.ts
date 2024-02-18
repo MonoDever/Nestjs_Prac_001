@@ -1,6 +1,6 @@
 import { Column } from "typeorm";
 
-export class commonentity{
+export class RegularEntity{
     @Column('text')
     createdBy: string;
     @Column({ type: 'datetime' })

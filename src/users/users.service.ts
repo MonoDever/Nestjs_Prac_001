@@ -3,14 +3,15 @@ import { UserRepository } from './Repositories/userRepository.entity';
 import { Connection, Repository, getConnection, DataSource } from 'typeorm';
 import { InjectRepository } from '@nestjs/typeorm';
 import { User, updateUserDto } from './interfaces/user.interface';
-import { UserDirectoryEntity, UserDirectoryModel, UserEntity } from './Entities/userEntity';
+import { UserDirectoryEntity, UserDirectoryModel, UserEntity, UserModel } from './Entities/userEntity';
 import { EmailService } from 'src/email/email.service';
 import { deserialize, serialize } from 'v8';
-import { validateEmail } from 'src/common/utility';
+import { dataMapping, getDateUTC, getYear, validateEmail } from 'src/common/utility';
 import { EmailInterface } from 'src/email/interfaces/email.interface';
 import { UserDirectory } from './Repositories/userDirectory.entity';
 import { ResultEntity } from 'src/common/entities/resultEntity';
 import { TakeTimer } from 'src/common/utils/timer';
+import { CommonEntity } from 'src/common/entities/commonEntity';
 
 const JWT = require('jsonwebtoken')
 const bcrypt = require('bcrypt');
@@ -30,11 +31,11 @@ export class UsersService {
 
     async findAll(): Promise<UserEntity[]> {
         const result = await this.userRepository.find();
-        const resultMapping = this.dataMapping("userEntity", result);
+        const resultMapping = dataMapping("userEntity", result);
         const userEntity = new Array<UserEntity>(resultMapping);
         return userEntity;
     }
-    async findOne(username: string): Promise<UserEntity> {
+    async findOne(username: string): Promise<UserModel> {
         const userResult = await this.userRepository.find({
             where: {
                 username: username
@@ -42,11 +43,11 @@ export class UsersService {
         });
         if (userResult.length > 0) {
             const { id, ...result } = userResult[0];
-            const resultMapping = this.dataMapping(UserEntity, result);
-            const userEntity: UserEntity = resultMapping;
-            return userEntity;
+            const resultMapping = dataMapping(UserModel, result);
+            const userModel: UserModel = resultMapping;
+            return userModel;
         } else {
-            return new UserEntity();
+            return null;
         }
     }
 
@@ -68,7 +69,7 @@ export class UsersService {
         let newUserId = ''
         if (latesUser.userId != null) {
             const userId = latesUser.userId
-            const yearNow = this.getYear();
+            const yearNow = getYear()
             let userPrefix = 'ONI'
             let userYear = userId.slice(3, 7)
             let userRunning = userId.slice(7, 11)
@@ -82,7 +83,7 @@ export class UsersService {
             newUserId = userPrefix + userYear + userRunning
         } else {
             let userPrefix = 'ONI'
-            let userYear = this.getYear
+            let userYear = getYear()
             let userRunning = String(1).padStart(4, '0')
             newUserId = userPrefix + userYear + userRunning
         }
@@ -90,8 +91,10 @@ export class UsersService {
         return newUserId;
     }
 
-    async insertUser(userDto: User): Promise<ResultEntity> {
-        const resultEntity = new ResultEntity()
+    async insertUser(userDto: User): Promise<CommonEntity> {
+        const takeTimer = new TakeTimer();
+        takeTimer.startTimer()
+        const commonEntity = new CommonEntity(new ResultEntity())
         try {
             /**
              * check user is already
@@ -99,12 +102,12 @@ export class UsersService {
             const userAlready = await this.findOne(userDto.username);
             if (userAlready && userAlready.username !== null) {
                 // throw new ConflictException('user is already');
-                resultEntity.errorMessage = "User is already";
-                resultEntity.statusCode = HttpStatus.BAD_REQUEST
-                resultEntity.status = false
-                return resultEntity;
+                // resultEntity.errorMessage = "User is already";
+                // resultEntity.statusCode = HttpStatus.BAD_REQUEST
+                // resultEntity.status = false
+                commonEntity.result.setError('user is already');
+                return commonEntity;
             }
-            const user: User[] = [];
             /**
              * set unique userId
              */
@@ -113,7 +116,7 @@ export class UsersService {
              * hash password and set user model
              */
             const hashPassword = bcrypt.hashSync(userDto.password, saltRounds);
-            let date = this.getDateUTC();
+            let date = getDateUTC();
             const newUser = new UserRepository();
             newUser.userId = newUserId;
             newUser.username = userDto.username;
@@ -139,42 +142,49 @@ export class UsersService {
             //     .query(`EXEC [oni].[SP_REGISTER_USER] @0, @1, @2, @3`, [userDto.username, `${hashPassword}`, 1, date]);
             // const resultMapping = this.dataMapping(User, userRegistered);
             if (transResult1 && transResult2) {
-                resultEntity.status = true;
+                // resultEntity.status = true;
+                // resultEntity.statusCode = HttpStatus.OK;
+                commonEntity.result.setResult()
             }
-            return resultEntity;
-        } catch (err) {
-            resultEntity.status = false;
-            resultEntity.statusCode = HttpStatus.CONFLICT;
-            resultEntity.errorMessage = err.toString();
-            return resultEntity;
-            // throw await new HttpException(err.message, HttpStatus.BAD_REQUEST)
+            return commonEntity;
+        } catch (error) {
+            // resultEntity.status = false;
+            // resultEntity.statusCode = HttpStatus.CONFLICT;
+            // resultEntity.errorMessage = err.message;
+            commonEntity.result.setException(error.message)
+            return commonEntity;
         } finally {
-            resultEntity.methodName = 'insertUser';
-            resultEntity.timeNow = this.getDateUTC();
-            console.log(resultEntity);
+            // resultEntity.methodName = 'insertUser';
+            // resultEntity.timeNow = this.getDateUTC();
+            commonEntity.result.setFinal('insertUser',await takeTimer.endTimer(),getDateUTC())
+            console.log(commonEntity);
+            return commonEntity;
         }
     }
-    async changePassword(userDto: User): Promise<ResultEntity> {
+    async changePassword(userDto: User): Promise<CommonEntity> {
         /**
          * TODO set timer for
          */
-        let totalSeconds = 0;
-        function setTime() {
-            totalSeconds = totalSeconds + 1;
-        }
-        var timer = setInterval(setTime, 1000);
-
-        const resultEntity = new ResultEntity();
+        // let totalSeconds = 0;
+        // function setTime() {
+        //     totalSeconds = totalSeconds + 1;
+        // }
+        // var timer = setInterval(setTime, 1000);
+        const takeTimer = new TakeTimer();
+        takeTimer.startTimer();
+        
+        const commonEntity = new CommonEntity(new ResultEntity())
         try {
             /**
             * *check user is already
             */
             const userAlready = await this.findUser(userDto.username);
             if (!(userAlready && userAlready.username !== null)) {
-                resultEntity.status = false;
-                resultEntity.errorMessage = "User is not already";
-                resultEntity.statusCode = HttpStatus.BAD_REQUEST;
-                return resultEntity;
+                // commonEntity.result.status = false;
+                // commonEntity.result.errorMessage = "User is not already";
+                // commonEntity.result.statusCode = HttpStatus.BAD_REQUEST;
+                commonEntity.result.setError("User is already")
+                return commonEntity;
             }
             /**
              * *hash password
@@ -183,24 +193,25 @@ export class UsersService {
             userAlready.password = hashPassword;
             const user = await this.userRepository.save(userAlready);
             if (user) {
-                resultEntity.status = true;
-                resultEntity.statusCode = HttpStatus.OK;
+                // resultEntity.status = true;
+                // resultEntity.statusCode = HttpStatus.OK;
+                commonEntity.result.setResult()
             }
-
+            return commonEntity;
         } catch (error) {
-            resultEntity.errorMessage = error.message;
-            resultEntity.status = false;
-            resultEntity.statusCode = HttpStatus.CONFLICT;
+            // commonEntity.result.errorMessage = error.message;
+            // commonEntity.result.status = false;
+            // commonEntity.result.statusCode = HttpStatus.CONFLICT;
+            commonEntity.result.setException(error.message)
         }
-        finally{
-            clearInterval(timer);
-            resultEntity.methodName = 'changePassword';
-            resultEntity.timeNow = this.getDateUTC();
-            resultEntity.timeUsed = `${totalSeconds} sec`
-            console.log(resultEntity);
-            return resultEntity;
+        finally {
+            // clearInterval(timer);
+            // resultEntity.methodName = 'changePassword';
+            // resultEntity.timeNow = getDateUTC();
+            // resultEntity.timeUsed = `${totalSeconds} sec`
+            commonEntity.result.setFinal('changePassword',await takeTimer.endTimer(),getDateUTC())
+            console.log(commonEntity);
         }
-        
     }
 
     async updateUser(data: User) {
@@ -241,48 +252,53 @@ export class UsersService {
     }
 
     async sendEmailForVerifyCode(emailDTO: EmailInterface): Promise<any> {
-        /**
-         * TODO set timer for
-         */
-        let totalSeconds = 0;
-        function setTime() {
-            totalSeconds = totalSeconds + 1;
-        }
-        var timer = setInterval(setTime, 1000);
-
-        const resultEntity = new ResultEntity();
+        const takeTimer = new TakeTimer()
+        takeTimer.startTimer()
+        // let totalSeconds = 0;
+        // function setTime() {
+        //     totalSeconds = totalSeconds + 1;
+        // }
+        // var timer = setInterval(setTime, 1000);
+        const commonEntity = new CommonEntity(new ResultEntity());
         try {
             const validEmail = validateEmail(emailDTO.email);
             if (!validEmail) {
-                resultEntity.status = false;
-                resultEntity.statusCode = HttpStatus.BAD_REQUEST;
-                resultEntity.errorMessage = "Email format is incorrect.";
-                return resultEntity;
+                // commonEntity.result.status = false;
+                // commonEntity.result.statusCode = HttpStatus.BAD_REQUEST;
+                // commonEntity.result.errorMessage = "Email format is incorrect.";
+                commonEntity.result.setError("Email format is incorrect.")
+                return commonEntity;
             }
             const user = await this.findUser(emailDTO.email)
             if (!user) {
-                resultEntity.status = false;
-                resultEntity.statusCode = HttpStatus.BAD_REQUEST;
-                resultEntity.errorMessage = "Email is not already in system.";
-                return resultEntity;
+                // commonEntity.result.status = false;
+                // commonEntity.result.statusCode = HttpStatus.BAD_REQUEST;
+                // commonEntity.result.errorMessage = "Email is not already in system.";
+                commonEntity.result.setError("Email is not already in system.")
+                return commonEntity;
             }
             const emailResponse = await this.emailService.sendMail(emailDTO.email)
             if (emailResponse) {
-                resultEntity.status = true;
-                resultEntity.statusCode = HttpStatus.OK;
+                // commonEntity.result.status = true;
+                // commonEntity.result.statusCode = HttpStatus.OK;
+                commonEntity.result.setResult()
             }
+            return commonEntity;
         } catch (error) {
-            resultEntity.status = true;
-            resultEntity.statusCode = HttpStatus.CONFLICT;
-            resultEntity.errorMessage = error.message;
+            // commonEntity.result.status = true;
+            // commonEntity.result.statusCode = HttpStatus.CONFLICT;
+            // commonEntity.result.errorMessage = error.message;
+            commonEntity.result.setException(error.message)
+            return commonEntity;
         } finally {
-            clearInterval(timer)
-            resultEntity.methodName = 'sendEmailForVerifyCode';
-            resultEntity.timeNow = this.getDateUTC()
-            resultEntity.timeUsed = `${totalSeconds} sec`
-            console.log(resultEntity)
+            // clearInterval(timer)
+            // commonEntity.result.methodName = 'sendEmailForVerifyCode';
+            // commonEntity.result.timeNow = getDateUTC()
+            // commonEntity.result.timeUsed = `${totalSeconds} sec`
+            
+            commonEntity.result.setFinal('sendEmailForVerifyCode',await takeTimer.endTimer(),getDateUTC())
+            console.log(commonEntity)
         }
-        return resultEntity;
     }
 
     async getLogVerifyCode(email: string): Promise<any> {
@@ -294,38 +310,44 @@ export class UsersService {
         /**
          * TODO set timer for
          */
-        let totalSeconds = 0;
-        function setTime() {
-            totalSeconds = totalSeconds + 1;
-        }
-        var timer = setInterval(setTime, 1000);
+        // let totalSeconds = 0;
+        // function setTime() {
+        //     totalSeconds = totalSeconds + 1;
+        // }
+        // var timer = setInterval(setTime, 1000);
+        const takeTimer = new TakeTimer();
+        takeTimer.startTimer();
 
-        const resultEntity = new ResultEntity();
+        const commonEntity = new CommonEntity(new ResultEntity());
         try {
-
             const verifyCode = await this.emailService.getLogVerifyCode(emailDTO.email);
             if (emailDTO.verifyCode == verifyCode) {
-                resultEntity.status = true;
+                // resultEntity.status = true;
+                commonEntity.result.setResult()
             } else {
-                resultEntity.status = false;
-                resultEntity.statusCode = HttpStatus.BAD_REQUEST;
-                resultEntity.errorMessage = 'VerifyCode is invalid';
+                // resultEntity.status = false;
+                // resultEntity.statusCode = HttpStatus.BAD_REQUEST;
+                // resultEntity.errorMessage = 'VerifyCode is invalid';
+                commonEntity.result.setError('VerifyCode is invalid')
             }
+            return commonEntity;
         } catch (error) {
-            resultEntity.status = false;
-            resultEntity.statusCode = HttpStatus.CONFLICT;
-            resultEntity.errorMessage = error.message;
+            // resultEntity.status = false;
+            // resultEntity.statusCode = HttpStatus.CONFLICT;
+            // resultEntity.errorMessage = error.message;
+            commonEntity.result.setException(error.message)
+            return commonEntity;
         } finally {
-            clearInterval(timer);
-            resultEntity.methodName = 'validateVerifyCode';
-            resultEntity.timeNow = this.getDateUTC();
-            resultEntity.timeUsed = `${totalSeconds} sec`;
-            console.log(resultEntity)
-            return resultEntity;
+            // clearInterval(timer);
+            // resultEntity.methodName = 'validateVerifyCode';
+            // resultEntity.timeNow = getDateUTC();
+            // resultEntity.timeUsed = `${totalSeconds} sec`;
+            commonEntity.result.setFinal('',await takeTimer.endTimer(),getDateUTC())
+            console.log(commonEntity)   
         }
     }
 
-    async findUserDirectory(userId: string): Promise<UserDirectory>{
+    async findUserDirectory(userId: string): Promise<UserDirectory> {
         const userDirectories = await this.userdirectoryRepository.findOne({
             where: {
                 userId: userId
@@ -335,36 +357,38 @@ export class UsersService {
     }
     async getUserDirectory(userId: string): Promise<UserDirectoryEntity> {
         // *start timer for count time used task getUserDirectory
-        const takeTimer = new TakeTimer(0);
+        const takeTimer = new TakeTimer();
         takeTimer.startTimer();
-
-        let userDirectoryEntity = new UserDirectoryEntity()
+        const userDirectoryEntity = new UserDirectoryEntity()
+        const resultEntity = new ResultEntity();
         try {
             const userDirectory = await this.findUserDirectory(userId)
-            /**
-             * Todo data mapping
-             */
-            const resultMapping = await this.dataMapping(UserDirectoryModel,userDirectory);
+            if (!userDirectory) {
+                resultEntity.setError(`user not found`)
+                // resultEntity.errorMessage = 'Not user found';
+                // resultEntity.status = false;
+                // resultEntity.statusCode = HttpStatus.BAD_REQUEST;
+            }
+            const resultMapping = await dataMapping(UserDirectoryModel, userDirectory);
             userDirectoryEntity.userDirectory = resultMapping;
-            userDirectoryEntity.result.status = true;
-            userDirectoryEntity.result.statusCode = HttpStatus.OK;
+            resultEntity.setResult();
+            // userDirectoryEntity.result.status = true;
+            // userDirectoryEntity.result.statusCode = HttpStatus.OK;
         } catch (error) {
-            userDirectoryEntity.result.status = false;
-            userDirectoryEntity.result.statusCode = HttpStatus.CONFLICT;
-            userDirectoryEntity.result.errorMessage = error.message;
-        } finally{
-            /**
-             * Todo create a class for set result entity
-             */
-            userDirectoryEntity.result.methodName = 'getUserDirectory';
-            userDirectoryEntity.result.timeNow = this.getDateUTC();
-            await setTimeout(async() => {
-                const timeUsed = await takeTimer.endTimer();
-                userDirectoryEntity.result.timeUsed = `${timeUsed} sec`;
-                console.log(userDirectoryEntity);
+            resultEntity.setException(error.message)
+            // userDirectoryEntity.result.status = false;
+            // userDirectoryEntity.result.statusCode = HttpStatus.CONFLICT;
+            // userDirectoryEntity.result.errorMessage = error.message;
+        } finally {
 
-
-            }, 5000);
+            resultEntity.setFinal('getUserDirectory', await takeTimer.endTimer(), getDateUTC())
+            userDirectoryEntity.result = resultEntity;
+            // userDirectoryEntity.result.methodName = 'getUserDirectory';
+            // userDirectoryEntity.result.timeNow = this.getDateUTC();
+            // const timeUsed = await takeTimer.endTimer();
+            // userDirectoryEntity.result.timeUsed = `${timeUsed} sec`;
+            // console.log(userDirectoryEntity);
+            console.log(userDirectoryEntity);
             return userDirectoryEntity;
         }
     }
@@ -384,61 +408,4 @@ export class UsersService {
         return isPasswordCorrect;
     }
 
-    private getDateUTC = () => {
-        const today = new Date();
-        const year = today.getUTCFullYear();
-        const month = today.getUTCMonth() + 1;
-        const day = today.getUTCDate();
-        const hours = today.getUTCHours();
-        const minutes = today.getUTCMinutes();
-        const seconds = today.getUTCSeconds();
-        const milliSeconds = today.getUTCMilliseconds();
-        let dateUTC = Date.UTC(year, month, day, hours, minutes, seconds, milliSeconds)
-        return new Date(dateUTC);
-    }
-
-    private getYear = () => {
-        const today = new Date();
-        const year = today.getUTCFullYear();
-        const month = today.getUTCMonth() + 1;
-        const day = today.getUTCDate();
-        return year;
-    }
-
-    private dataMapping = (classType, origin: any) => {
-        let instance = new classType();
-        Object.keys(origin).forEach((key) => {
-            // console.log(origin[key])
-            Object.keys(instance).forEach((instanceKey) => {
-                if (instanceKey == key) {
-                    instance[instanceKey] = origin[key]
-                }
-            })
-        })
-
-        // const jsonString = JSON.stringify(origin);
-        // const jsonString = serialize(origin)
-        // const jsonObject : UserEntity = deserialize(jsonString)
-        // const jsonObject : UserEntity = JSON.parse(jsonString) as UserEntity;
-        // return jsonObject;
-        return instance;
-    }
-
-    public dataListMapping = (classType, origins: any[]) => {
-        let instaces = [];
-        origins.forEach(origin => {
-            let instance = new classType();
-            Object.keys(origin).forEach((key) => {
-                // console.log(origin[key])
-                Object.keys(instance).forEach((instanceKey) => {
-                    if (instanceKey == key) {
-                        instance[instanceKey] = origin[key]
-                    }
-                })
-            })
-            instaces.push(instance)
-        });
-        
-        return instaces;
-    }
 }

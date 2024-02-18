@@ -1,7 +1,7 @@
 import { Column, Entity, JoinColumn, OneToOne, PrimaryColumn, PrimaryGeneratedColumn } from "typeorm";
-import { commonentity } from "./commonentity";
+import { RegularEntity } from "src/common/entities/regularEntity";
 @Entity()
-export class UserDirectory extends commonentity{
+export class UserDirectory extends RegularEntity{
     @PrimaryGeneratedColumn()
     id: number;
     @PrimaryColumn()
