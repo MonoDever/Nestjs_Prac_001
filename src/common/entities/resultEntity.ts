@@ -1,12 +1,30 @@
 import { HttpStatus } from "@nestjs/common";
 
 export class ResultEntity{
-    status: boolean = false;
-    statusCode: number = null;
-    errorMessage: string = null;
-    methodName: string = null;
-    timeUsed: string = null;
-    timeNow: Date = null;
+    private status: boolean = false;
+    public get Status(): boolean{
+        return this.status;
+    }
+    private statusCode: number = null;
+    get StatusCode(): number{
+        return this.statusCode;
+    }
+    private errorMessage: string = null;
+    get ErrorMessage(): string{
+        return this.errorMessage;
+    }
+    protected methodName: string = null;
+    get MethodName(): string{
+        return this.methodName;
+    }
+    protected timeUsed: string = null;
+    get TimerUsed(): string{
+        return this.timeUsed;
+    }
+    private timeNow: Date = null;
+    get TimeNow(): Date{
+        return this.timeNow;
+    }
 
     constructor(){
 
